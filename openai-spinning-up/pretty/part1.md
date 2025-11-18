@@ -173,13 +173,13 @@ $$
 3. Optimal value function, gives expected return if start in s and always act according to optimal policy in env.
 
 $$
-V^\{*\}(s) = \max_{\pi}\mathbb{E}_{\tau \sim \pi}\left[R(\tau) \mid s_0 = s\right]
+V^{\ast}(s) = \max_{\pi}\mathbb{E}_{\tau \sim \pi}\left[R(\tau) \mid s_0 = s\right]
 $$
 
 4. Optimal Action-Value Function, expected return start in s, take arb act a, forever act according to optimal policy.
 
 $$
-Q^\{*\}(s, a) = \max_{\pi}\mathbb{E}_{\tau \sim \pi}\left[R(\tau) \mid s_0 = s, a_0 = a\right]
+Q^{\ast}(s, a) = \max_{\pi}\mathbb{E}_{\tau \sim \pi}\left[R(\tau) \mid s_0 = s, a_0 = a\right]
 $$
 
 Two lemmas which just require some algebra to prove:
@@ -189,19 +189,19 @@ V^{\pi}(s) = \mathbb{E}_{a \sim \pi}\left[Q^{\pi}(s, a)\right]
 $$
 
 $$
-V^\{*\}(s) = \max_{a} Q^\{*\}(s, a)
+V^{\ast}(s) = \max_{a} Q^{\ast}(s, a)
 $$
 
 ## The Optimal Q-Function and the Optimal Action
 
-* By def, $Q^\{*\}(s, a)$ gives the expected return for starting in $s$, taking (arbitrary) action $a$, and then acting according to optimal policy forever.
-* The optimal policy in $s$ will select whichever action maximizes expected return from starting in $s$. So if we have $Q^\{*\}$, we can directly obtain the optimal action $a^\{*\}(s)$ via
+* By def, $Q^{\ast}(s, a)$ gives the expected return for starting in $s$, taking (arbitrary) action $a$, and then acting according to optimal policy forever.
+* The optimal policy in $s$ will select whichever action maximizes expected return from starting in $s$. So if we have $Q^{\ast}$, we can directly obtain the optimal action $a^{\ast}(s)$ via
 
 $$
-a^\{*\}(s) = \arg\max_{a}Q^\{*\}(s, a)
+a^{\ast}(s) = \arg\max_{a}Q^{\ast}(s, a)
 $$
 
-* Even if there are multiple actions which maximize $Q^\{*\}(s, a)$, there is always an optimal policy which deterministically selects an action.
+* Even if there are multiple actions which maximize $Q^{\ast}(s, a)$, there is always an optimal policy which deterministically selects an action.
 
 ## Bellman Equations
 
@@ -216,11 +216,11 @@ Q^{\pi}(s, a) = \mathbb{E}_{s' \sim P}\left[r(s, a) + \gamma \mathbb{E}_{a' \sim
 $$
 
 $$
-V^\{*\}(s) = \max_{a}\mathbb{E}_{s' \sim P}\left[r(s, a) + \gamma V^\{*\}(s')\right]
+V^{\ast}(s) = \max_{a}\mathbb{E}_{s' \sim P}\left[r(s, a) + \gamma V^{\ast}(s')\right]
 $$
 
 $$
-Q^\{*\}(s, a) = \mathbb{E}_{s' \sim P}\left[r(s, a) + \gamma \max_{a'} Q^\{*\}(s', a')\right]
+Q^{\ast}(s, a) = \mathbb{E}_{s' \sim P}\left[r(s, a) + \gamma \max_{a'} Q^{\ast}(s', a')\right]
 $$
 
 ## Advantage functions

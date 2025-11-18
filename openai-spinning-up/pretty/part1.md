@@ -92,7 +92,7 @@ $$
 * The policy function given by the neural net is the PDF of the multivariate normal, which is given by
 
 $$
-f(x) = \frac{1}{\sqrt{(2\pi)^k \det{\Sigma}}} \exp{\left(-\frac{1}{2}(x - \mu)^T \Sigma^{-1}(x - \mu)\right)}
+f(x) = \frac{1}{\sqrt{(2\pi)^k |\Sigma|}} \exp{\left(-\frac{1}{2}(x - \mu)^T \Sigma^{-1}(x - \mu)\right)}
 $$
 
 * In this PDF, the covariance matrix is diagonal, so the determinant is just the product of the diagonals, which are the variances. Additionally, the inverse is the reciprocal of the diagonals.
@@ -173,13 +173,13 @@ $$
 3. Optimal value function, gives expected return if start in s and always act according to optimal policy in env.
 
 $$
-V^{*}(s) = \max_{\pi}\mathbb{E}_{\tau \sim \pi}\left[R(\tau) \mid s_0 = s\right]
+V^\{*\}(s) = \max_{\pi}\mathbb{E}_{\tau \sim \pi}\left[R(\tau) \mid s_0 = s\right]
 $$
 
 4. Optimal Action-Value Function, expected return start in s, take arb act a, forever act according to optimal policy.
 
 $$
-Q^{*}(s, a) = \max_{\pi}\mathbb{E}_{\tau \sim \pi}\left[R(\tau) \mid s_0 = s, a_0 = a\right]
+Q^\{*\}(s, a) = \max_{\pi}\mathbb{E}_{\tau \sim \pi}\left[R(\tau) \mid s_0 = s, a_0 = a\right]
 $$
 
 Two lemmas which just require some algebra to prove:
@@ -189,19 +189,19 @@ V^{\pi}(s) = \mathbb{E}_{a \sim \pi}\left[Q^{\pi}(s, a)\right]
 $$
 
 $$
-V^{*}(s) = \max_{a} Q^{*}(s, a)
+V^\{*\}(s) = \max_{a} Q^\{*\}(s, a)
 $$
 
 ## The Optimal Q-Function and the Optimal Action
 
-* By def, $Q^{*}(s, a)$ gives the expected return for starting in $s$, taking (arbitrary) action $a$, and then acting according to optimal policy forever.
-* The optimal policy in $s$ will select whichever action maximizes expected return from starting in $s$. So if we have $Q^{*}$, we can directly obtain the optimal action $a^{*}(s)$ via
+* By def, $Q^\{*\}(s, a)$ gives the expected return for starting in $s$, taking (arbitrary) action $a$, and then acting according to optimal policy forever.
+* The optimal policy in $s$ will select whichever action maximizes expected return from starting in $s$. So if we have $Q^\{*\}$, we can directly obtain the optimal action $a^\{*\}(s)$ via
 
 $$
-a^{*}(s) = \arg\max_{a}Q^{*}(s, a)
+a^\{*\}(s) = \arg\max_{a}Q^\{*\}(s, a)
 $$
 
-* Even if there are multiple actions which maximize $Q^*(s, a)$, there is always an optimal policy which deterministically selects an action.
+* Even if there are multiple actions which maximize $Q^\{*\}(s, a)$, there is always an optimal policy which deterministically selects an action.
 
 ## Bellman Equations
 
@@ -216,11 +216,11 @@ Q^{\pi}(s, a) = \mathbb{E}_{s' \sim P}\left[r(s, a) + \gamma \mathbb{E}_{a' \sim
 $$
 
 $$
-V^{*}(s) = \max_{a}\mathbb{E}_{s' \sim P}\left[r(s, a) + \gamma V^{*}(s')\right]
+V^\{*\}(s) = \max_{a}\mathbb{E}_{s' \sim P}\left[r(s, a) + \gamma V^\{*\}(s')\right]
 $$
 
 $$
-Q^{*}(s, a) = \mathbb{E}_{s' \sim P}\left[r(s, a) + \gamma \max_{a'} Q^{*}(s', a')\right]
+Q^\{*\}(s, a) = \mathbb{E}_{s' \sim P}\left[r(s, a) + \gamma \max_{a'} Q^\{*\}(s', a')\right]
 $$
 
 ## Advantage functions

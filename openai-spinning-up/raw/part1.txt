@@ -1,0 +1,198 @@
+Part 1 - Key Concepts in RL
+
+Intro
+
+* RL is the study of agents and how they learn by trial and error.
+* Main characters are agent and environment. Agents get observations at every step and perceive a reward signal which tells it how good or bad the state is.
+
+States and Observations 
+
+* State s is a complete description of the world. Observation o is partial description of state.
+* Both represented by real valued vector, matrix, tensor
+* Environment is fully observed when agent observes complete state, when only partial observation is partially observed
+
+Action Spaces
+Set of valid actions to take, can be discrete (Go) or Continuous (Robot)
+
+Policies
+
+* Policy is a rule used by an agent to decide what actions to take, Can be deterministic or stochastic
+
+$$
+a_t = \mu(s_t)
+a_t ~ \pi(\dot | s_t)
+$$
+
+* Deep RL deals with parameterized policies - outputs are computable functions that depend on a set of parameters which can be adjusted to change behavior via an optimization algorithm. In such policies, parameters are denoted by $\theta$ or $\phi$
+
+$$
+a_t = \mu_{\theta}(s_t)
+a_t ~ \pi_{\theta}(\dot | s_t)
+$$
+
+* KEY KEY KEY - policy **function** is the neural net that outputs the policy parameters. the policy is the set of actions e.g. described by a multivariate gaussian. 
+
+Deterministic Policies
+
+* Code snippet for deterministic policy using pytorch. Builds an MLP network with two hidden layers of size 64. The input layer is not explicitly defined in pytorch, its just the input data.
+
+```
+pi_net = nn.Sequential(
+            nn.Linear(obs_dim, 64),
+            nn.Tanh(),
+            nn.Linear(64, 64),
+            nn.Tanh(),
+            nn.Linear(64, act_dim)
+        )
+```
+
+* Then if obs is a Numpy array containing a batch of observations, pi_net can be used to obtain a batch of actions like:
+
+```
+obs_tensor = torch.as_tensor(obs, dtype=torch.float32)
+actions = pi_net(obs_tensor)
+```
+
+* From asking claude, it seems like the key difference between the training phase in deep RL and supervised learning is that in deep RL, the agent trains the network by interacting with the environment. So this looks like state -> network -> action -> environment -> rewards -> update network weights. During training there is typically an exploration strategy to ensure the agent is able to properly explore the environment. 
+
+
+Categorical Policies
+
+* Two most common stochastic policies are categorical policies (discrete) and diagonal Gaussian policies (continuous).
+* Key computations for stochastic policies are sampling actions from the policy and computing log liklihoods of particular actions. 
+* From claude, we use the log liklihood because pi_theta is typically an exponential, so taking the log makes derivatives easier. Also numerical stability, and something called the policy gradient theorem which I don't know about yet. Should come back to this if spinning up doesn't intro it first.
+* In a categorical policy, we are basically building a classifier over discrete actions.
+* Last layer gives you logits (pre softmax values) for the actions, then you softmax to get probabilities. the log liklihood for an action is obtained by taking the log of the index into the vector.
+$$
+\log{\pi_{\theta}(a | s)} = \log \[P_{\theta}(s)]_{a}
+$$
+* given probabilities for actions, frameworks have built in tools for sampling
+* I think I need a refresher on neural nets and reverse mode auto diff. I'm still unclear on why exactly the log liklihood is so useful, although I imagine it involves the backward pass and policy gradient theorem. I'm imagining that you adjust the log liklihoods according to PGT and then backprop the updated probs through the network or something.
+* The key difference between a categorical policy and a deterministic policy is what the output represents. In a categorical policy, it is a probability distribution over a discrete set of actions (like picking the next direction for a character in a simple game). In a deterministic policy, it is a vector representing an action in a continuous action space (like, moving a robot arm according to a vector).
+
+Diagonal Gaussian Policies
+* Multivariate gaussian described by a mean vector $\mu$ and a covariance matrix $\Sigma$. A diagonal Gaussian is a special case where the covariance matrix only has entries on the diagonal. 
+* I should probably learn about the math behind multivariate gaussians, last time I used them was likely probability theory class.
+* Diagonal Gaussian **policy** has a NN that maps from observations to mean actions. The covariance matrix can be a single vector of log standard deviations $ \log {\sigma}$ which is not a function of state. OpenAI's implementations of policy do it this way. Or we can have a NN tht maps froms tates to log standard deviations which share some layers with the mean NN.
+* sampling from diagonal gaussian is done by taking noise $z$ from an N dimensional spherical gaussian and computing
+
+$$
+a = \mu_{\theta}(s) + \sigma_{\theta}(s) \dot z
+$$
+
+* The policy function given by the neural net is the PDF of the multivariate normal, which is given by
+
+$$
+f(x) = \frac{1}{\sqrt{(2\pi)^k \det{\Sigma}}} \exp{\left(-\frac{1}{2}(x - \mu)^T \Sigma^{-1}(x - \mu)\right)}
+$$
+
+* In this PDF, the covariance matrix is diagonal, so the determinant is just the produce of the diagonals, which are the variances. Additionally, the inverse is the reciprocal of the diagonals.
+* Log likelihood of a k dimensional action a, for a diagnoal gaussian with mean $\mu_{\theta}(s) and standard deviation \sigma_{\theta}(s)$ is given by the log of the PDF, which after a bunch of algebra is:
+
+DIRECTIVE
+claude please fill this in, not going to latex it
+DIRECTIVE
+
+Trajectories
+
+* A trajectory $\tau$ is a sequence of states and actions in the world 
+$$
+\tau = (s_0, a_0, s_1, a_1, ...)
+$$
+
+* The very first tate of the world s_0 is randomly sampled from the start-state distribution, denoted by $\rho_0$.
+
+State transitions are governed by natural laws of the environment, and depend only on the most recent action. Can either be deterministic $s_{t + 1} = f(s_t, a_t)$ or stochastic $s_{t + 1} ~ P(\dot | s_t, a_t)$
+* FYI for Akum reading this later, the $\dot$ inside the probability is a placeholder for the argument of the funciton, in other words the probability of the next state is sampled from the probability distribution s', which itself is the sampling distribution with some probability given s_t and a_t. In shorthand, $P(s_{t + 1} | s_t, a_t)$, where P is the PDF of the state transition distribution.
+
+Reward and Return
+* Reward function R is critically important in RL. Depends on current state of the world, action taken, next state. 
+* Agent's goal is to maximize cumulative reward over a trajectory, but this can mean a few things.
+* First kind is finite-horizon undiscounted return, which is just the sum of rewards obtained in a fixed window:
+$$
+R(\tau) = \sum{t = 0}{T}r_t
+$$
+* Second kind is infinite horizon discounted return, which is sum of all rewards ever obtained, discounted by how far off in the future they are obtained. Discount factor is $\gamma \in (0, 1)$
+$$
+R(\tau) = \sum{t = 0}{\inf}\gamma^t r_t
+$$
+
+* Why discount? Intuition - cash now > cash later. Mathematically, infinite horizon sum may not converge and is hard to deal with in equations. But with a discount factor and under reasonable conditions, inf sum converges.
+* Deep RL practice can blur the line a fair bit, for example algos to optimize undiscounted return but using discount factors in estimating value functions (no idea what this means, should ask claude).
+
+The RL problem
+* goal of RL is to select a policy which maximizes the expected return when the agent acts according to it.
+* If the environment transitions and policy are stochastic, the probability of a T step trajectory is
+
+$$
+P(\tau | \pi) = \rho_0(s_0) \prod{t = 0}{T-1}P(s_{t + 1} | s_t, a_t)\pi(a_t, s_t)
+$$
+
+* Expected return is
+$$
+J(\pi) = \int_{\tau}P(\tau | \pi)R(\tau) = \mathbb{E}_{\tau ~ \pi} left[R(\tau)\right]
+$$
+
+* Central optimization problem in RL can be expressed by below, with $\pi^*$ being the optimal policy
+$$
+\pi^* = \argmax_{pi} J(\pi)
+$$
+
+Value Functions
+* Often useful to know the value of a state or state action pair, in other words the expected return if you start in that state and act according to a particular policy forever. There are 4 main value functions.
+
+1. On policy value function, $V^{pi}(s)$, gives expected return if start in $s$ and always act according to $\pi$
+$$
+V^{\pi}(s) = \mathbb{E}_{\tau ~ \pi} \left[R(\tau) | s_0 = s\right]
+$$
+
+2. On policy action value function, gives expected return if you start in $s$, take arbitrary aciton $a$ (might not come from policy), and then forever act according to $\pi$
+$$
+Q^{\pi}(s, a) = \mathbb{E}_{\tau ~ \pi} \left[R(\tau) | s_0 = s, a_0 = a\right]
+$$
+
+3. Optimal value function, gives expected return if start in s and always act according to optimal policy in env.
+$$
+V^{*}(s) = \max_{pi}\mathbb{E}_{\tau ~ \pi} \left[R(\tau) | s_0 = s\right]
+$$
+4. Optimal Action-Value Function, expected return start in s, take arb act a, forever act according to optimal policy.
+$$
+Q^{*}(s, a) = \max_{pi}\mathbb{E}_{\tau ~ \pi} \left[R(\tau) | s_0 = s, a_0 = a\right]
+$$
+
+Two lemmas which just require some algebra to prove:
+
+$$
+V^{\pi}(s) = E_{a ~ \pi} \left[Q^{\pi}(s, a)\right]
+
+V^{*}(s) = max_{a} Q^{*}(s, a).
+$$
+
+The Optimal Q-Function and the Optimal Action
+
+* By def, Q^{*}(s, a) gives the expected return for starting in $s$, taking (arbitrary) action $a$, and then acting according to optimal policy forever.
+* The optimal policy in $s$ will select whichever action maximizes expected return from starting in $s$. So if we have $Q^{*}$, we can directly obtain the optimal action $a^{*}(s)$ via 
+
+$$
+a^{*}(s) = \argmax_{a}Q^{*}(s, a)
+$$
+
+* Even if there are multiple actions which maximize $Q^*(s, a)$, there is always an optimal policy which deterministically selects an action.
+
+Bellman Equations
+* All four value functions obey special self-consistency equations called Bellman equations. Basic idea is that the value of your starting poiint is the expected reward from being there, plus the value of wherever you land next
+
+DIRECTIVE
+claude please fill the 4 bellman equations in, not going to latex them out
+DIRECTIVE
+
+Advantage functions
+
+* Sometimes we want to know how much better an action is than others on average, rather than how good it is in an absolute sense. 
+* The advantage function $A^{\pi}(s, a)$ corresponding to a policy $\pi$ describes how much better it is to take a specific action $a$ in state $s$, over randomly slecting an action according to $\pi(\dot | s)$, assuming you act according to $\pi$ forever after. Mathematically we write:
+
+$$
+A^{\pi}(s, a) = Q^{\pi}(s, a) - V^{\pi}(s)
+$$
+
+

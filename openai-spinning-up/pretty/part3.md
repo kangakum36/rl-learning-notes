@@ -1,0 +1,147 @@
+# Part 3: Intro to Policy Optimization
+
+## Intro
+
+* Will discuss math foundations of policy optimization algorithms. 3 key results are the simplest equation describing the gradient of policy performance, a rule which allows us to drop useless terms, and a rule which allows us to add useful terms.
+* Will tie these together into a Vanilla Policy Gradient implementation.
+
+## Deriving the Simplest Policy Gradient
+
+* Stochastic, parameterized policy $\pi_{\theta}$. Aim to maximize expected return $J(\pi_{\theta}) = \mathbb{E}_{\tau \sim \pi_{\theta}}[R(\tau)]$. For this derivation $R(\tau)$ gives the finite horizon undiscounted return.
+* We want to optimize the policy by gradient ascent, i.e.
+
+$$
+\theta_{k + 1} = \theta_{k} + \alpha \nabla_{\theta}J(\pi_{\theta})\bigg|_{\theta_k}
+$$
+
+* $\nabla_{\theta}J(\pi_{\theta})$ is called the policy gradient. Algorithms that optimize the policy this way are called policy gradient algorithms.
+
+* Need an expression for the policy gradient which we can numerically compute. First we need an analytical gradient of policy performance, which has the form of an expected value. Then we need a sample estimate of that expected value, which we can compute with data from a finite number of agent-env interaction steps.
+* Some facts (some from previous sections) will be necessary:
+
+1. First, we restate the probability of a trajectory $\tau = (s_0, a_0, \ldots, s_{T + 1})$ given that actions come from $\pi_{\theta}$:
+
+$$
+P(\tau | \theta) = \rho_0(s_0) \prod_{t=0}^{T}P(s_{t + 1}|s_t, a_t)\pi_{\theta}(a_t | s_t)
+$$
+
+2. Log derivative trick: derivative of $\log x$ wrt $x$ is $x'/x$, where $x'$ comes from chain rule. Rearranging for the gradient of the probability we get
+
+$$
+\nabla_{\theta}P(\tau | \theta) = P(\tau | \theta) \nabla_{\theta}\log P(\tau | \theta)
+$$
+
+3. Log prob of trajectory, just from algebra, is:
+
+$$
+\log P(\tau | \theta) = \log\rho_0(s_0) + \sum_{t=0}^{T}\left(\log P(s_{t + 1}|s_t, a_t) + \log\pi_{\theta}(a_t | s_t)\right)
+$$
+
+4. Gradients of Environment Functions. Environment has no dependence on $\theta$, so gradients of $\rho_0(s_0)$, $P(s_{t + 1} | s_t, a_t)$, and $R(\tau)$ are zero.
+
+5. Gradient of log prob. Using facts 3 and 4, we get
+
+$$
+\log P(\tau | \theta) = \log\rho_0(s_0) + \sum_{t=0}^{T}\left(\log P(s_{t + 1}|s_t, a_t) + \log\pi_{\theta}(a_t | s_t)\right)
+$$
+
+$$
+\implies \nabla_{\theta} \log P(\tau | \theta) = \nabla_{\theta} \log\rho_0(s_0) + \sum_{t=0}^{T}\left(\nabla_{\theta} \log P(s_{t + 1}|s_t, a_t) + \nabla_{\theta} \log\pi_{\theta}(a_t | s_t)\right) = \sum_{t=0}^{T} \nabla_{\theta} \log \pi_{\theta}(a_t | s_t)
+$$
+
+where the last equality is true because the gradients of $\rho_0(s_0)$ and $P(s_{t + 1} | s_t, a_t)$ are 0.
+
+* Now we put it all together:
+
+$$
+\begin{align*}
+\nabla_{\theta}J(\pi_{\theta}) &= \nabla_{\theta} \mathbb{E}_{\tau \sim \pi_{\theta}}[R(\tau)] \\
+&= \nabla_{\theta} \int_{\tau} P(\tau | \theta) R(\tau) \\
+&= \int_{\tau} \nabla_{\theta} P(\tau | \theta) R(\tau) \\
+&= \int_{\tau} P(\tau | \theta)\nabla_{\theta} \log P(\tau | \theta) R(\tau) \\
+&= \mathbb{E}_{\tau \sim \pi_{\theta}} [\nabla_{\theta} \log P(\tau | \theta) R(\tau)]
+\end{align*}
+$$
+
+$$
+\implies \nabla_{\theta}J(\pi_{\theta}) = \mathbb{E}_{\tau \sim \pi_{\theta}} \left[\sum_{t=0}^{T} \nabla_{\theta} \log \pi_{\theta}(a_t|s_t)R(\tau)\right]
+$$
+
+* Since this is an expectation, we can estimate it with a sample mean. If we collect a set of trajectories $\mathcal{D} = \{\tau_i\}_{i=1,\ldots,N}$ where each trajectory is obtained by letting the agent act according to $\pi_{\theta}$, the policy gradient can be estimated with
+
+$$
+\hat{g} = \frac{1}{|\mathcal{D}|} \sum_{\tau \in \mathcal{D}} \sum_{t=0}^{T} \nabla_{\theta} \log \pi_{\theta}(a_t | s_t) R(\tau)
+$$
+
+where $|\mathcal{D}|$ is the size of the set, i.e. the number of trajectories in $\mathcal{D}$, here $N$.
+
+* This is the standard formula for sample mean, just the sum of the observations divided by the number of observations, nothing fancy.
+
+## Implementing simple policy gradient
+
+* There is a GH implementation by OpenAI. I read it, they will go over a few sections in this guide. What follows is a mix of my notes and theirs.
+* Gym is a package that provides pre-configured environments and utilities for various standard RL tasks, like CartPole, Atari, etc.
+* `from torch.distributions.categorical import Categorical` returns a Categorical distribution, which from part 1, will take the logits and output an int action. torch will compute softmax to get the probabilities and then sample just by calling `distribution.sample().item()`
+* NN will output logits, which are input to Categorical.
+* loss function is `-(logp * weights).mean()` apparently the gradient of this function is equivalent to policy gradient. The key here is that each epoch contains many episodes. Each episode is equivalent to one trajectory, and the environment is reset between trajectories. At the end, loss computation is done by computing the log probs of all the actions given the observations and then multiplying by the weights (returns) of all the actions. then we get the mean. the denominator for the mean computation is the number of actions, while the theory tells us to use the number of trajectories. this is fine though because we can adjust alpha (learning rate) to compensate.
+
+## Running one epoch
+
+1. `train_one_epoch` runs a single epoch of policy gradient, which is experience collection step where the agent acts for some number of episodes
+2. A single policy gradient update step.
+
+## Expected Grad-Log-Prob Lemma
+
+* Expected Gradient of log probability is zero
+
+$$
+\mathbb{E}_{x \sim P_{\theta}}[\nabla_{\theta} \log P_{\theta}(x)] = 0
+$$
+
+* Proof. First, probability distributions are normalized
+
+$$
+\int_{x} P_{\theta}(x) = 1
+$$
+
+Then take the gradient of both sides and use the log derivative trick:
+
+$$
+\begin{align*}
+0 &= \nabla_{\theta} 1 = \nabla_{\theta} \int_x P_{\theta}(x) \\
+&= \int_{x} \nabla_{\theta} P_{\theta} (x) \\
+&= \int_{x} P_{\theta}(x) \nabla_{\theta} \log P_{\theta} (x) \\
+\implies 0 &= \mathbb{E}_{x \sim P_{\theta}} [\nabla_{\theta} \log P_{\theta}(x)]
+\end{align*}
+$$
+
+## Don't Let the Past Distract you
+
+* In the standard formula, we use $R(\tau)$ which implies that the returns at every step are the same as the return of the entire trajectory. It makes more sense to only consider returns that come after the action.
+* Then we reformulate our gradient formula as
+
+$$
+\nabla_{\theta} J(\pi_{\theta}) = \mathbb{E}_{\tau \sim \pi_{\theta}} \left[ \sum_{t=0}^{T} \nabla_{\theta} \log \pi_{\theta} (a_t | s_t) \sum_{t'=t}^{T} R(s_{t'}, a_{t'}, s_{t' + 1})\right]
+$$
+
+* So actions are reinforced based on rewards obtained after they are taken.
+* This is called "reward-to-go policy gradient", since the sum of the rewards after a point in the trajectory is called the reward-to-go from that point.
+
+* pretty easy to implement, just suffix sum the rewards instead of setting reward of every action to the trajectory rewards.
+
+## Baselines
+
+* Because of EGLP lemma, any function b which only depends on state can be multiplied with the log prob and the gradient is still zero. So we can add $-b(s_t)$ to the reward-to-go version of the gradient:
+
+$$
+\nabla_{\theta} J(\pi_{\theta}) = \mathbb{E}_{\tau \sim \pi_{\theta}} \left[ \sum_{t=0}^{T} \nabla_{\theta} \log \pi_{\theta} (a_t | s_t) \left(\sum_{t'=t}^{T} R(s_{t'}, a_{t'}, s_{t' + 1}) - b(s_t)\right)\right]
+$$
+
+* Most common choice of baseline is the on-policy value function $V^{\pi}(s_t)$. This is nice because it reduces variance in the sample estimate, which makes learning faster and more stable.
+* $V^{\pi}$ is usually approximated with $V_{\phi}$, learned with a neural network. The simplest method for learning $V_{\phi}$ is to minimize mean squared error from the go-forward return using gradient descent.
+
+## Other Forms of the Policy Gradient
+
+* Policy gradient so far has been log prob multiplied by reward, reward-to-go, or reward-to-go minus baseline.
+* On-Policy action value function $Q^{\pi_{\theta}}$.
+* Advantage function. Because adv function is just on-policy action value minus a baseline of on-policy value.

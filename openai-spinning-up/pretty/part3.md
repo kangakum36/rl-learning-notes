@@ -7,7 +7,13 @@
 
 ## Deriving the Simplest Policy Gradient
 
-* Stochastic, parameterized policy $\pi_{\theta}$. Aim to maximize expected return $J(\pi_{\theta}) = \mathbb{E}_{\tau \sim \pi_{\theta}}[R(\tau)]$. For this derivation $R(\tau)$ gives the finite horizon undiscounted return.
+* Stochastic, parameterized policy $\pi_{\theta}$. Aim to maximize expected return:
+
+$$
+J(\pi_{\theta}) = \mathbb{E}_{\tau \sim \pi_{\theta}}[R(\tau)]
+$$
+
+For this derivation $R(\tau)$ gives the finite horizon undiscounted return.
 * We want to optimize the policy by gradient ascent, i.e.
 
 $$
@@ -67,7 +73,7 @@ $$
 \implies \nabla_{\theta}J(\pi_{\theta}) = \mathbb{E}_{\tau \sim \pi_{\theta}} \left[\sum_{t=0}^{T} \nabla_{\theta} \log \pi_{\theta}(a_t|s_t)R(\tau)\right]
 $$
 
-* Since this is an expectation, we can estimate it with a sample mean. If we collect a set of trajectories $\mathcal{D} = \{\tau_i\}_{i=1,\ldots,N}$ where each trajectory is obtained by letting the agent act according to $\pi_{\theta}$, the policy gradient can be estimated with
+* Since this is an expectation, we can estimate it with a sample mean. If we collect a set of trajectories $\mathcal{D} = \\{\tau_i\\}\_{i=1,\ldots,N}$ where each trajectory is obtained by letting the agent act according to $\pi_{\theta}$, the policy gradient can be estimated with
 
 $$
 \hat{g} = \frac{1}{|\mathcal{D}|} \sum_{\tau \in \mathcal{D}} \sum_{t=0}^{T} \nabla_{\theta} \log \pi_{\theta}(a_t | s_t) R(\tau)
